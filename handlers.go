@@ -50,7 +50,7 @@ func (s *Store) shortenHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Store) redirectHandler(w http.ResponseWriter, r *http.Request) {
 	code := r.PathValue("code")
 
-	longURL, err := s.Get(code)
+	longURL, err := s.Get(r.Context(), code)
 	if errors.Is(err, sql.ErrNoRows) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
