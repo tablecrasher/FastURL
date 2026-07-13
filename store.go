@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"log"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -46,4 +48,42 @@ func (s *Store) Get(ctx context.Context, code string) (string, error) {
 	}
 
 	return longURL, nil
+}
+
+func (s *Store) flushLoop() {
+	ticker := time.NewTicker(10 * time.Second) // 10s for testing; 30s+ in real life
+	for range ticker.C {
+		s.flushClicks(context.Background())
+	}
+}
+
+func (s *Store) flushClicks(ctx context.Context) {
+	keys, err := s.cache.Keys(ctx, "clicks:*").Result()
+	if err != nil {
+		log.Printf("flush: listing keys failed: %v", err)
+		return
+	}
+
+	for _, key := range keys {
+		countStr, err := s.cache.GetDel(ctx, key).Result()
+		if err != nil {
+			log.Printf("flush: getdel %s failed: %v", key, err)
+			continue
+		}
+
+		count, err := strconv.Atoi(countStr)
+		if err != nil {
+			log.Printf("flush: bad count %q for %s: %v", countStr, key, err)
+			continue
+		}
+
+		code := strings.TrimPrefix(key, "clicks:")
+
+		if _, err := s.db.Exec(
+			"UPDATE urls SET clicks = clicks + $1 WHERE code = $2",
+			count, code,
+		); err != nil {
+			log.Printf("flush: update %s failed: %v", code, err)
+		}
+	}
 }

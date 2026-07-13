@@ -34,6 +34,6 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /shorten", store.shortenHandler)
 	mux.HandleFunc("GET /{code}", store.redirectHandler)
-
+	go store.flushLoop()
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }

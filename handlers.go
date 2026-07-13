@@ -60,5 +60,6 @@ func (s *Store) redirectHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	s.cache.Incr(r.Context(), "clicks:"+code)
 	http.Redirect(w, r, longURL, http.StatusFound)
 }
