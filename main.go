@@ -1,9 +1,10 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/base32"
 	"encoding/json"
 	"log"
-	"math/rand"
 	"net/http"
 	"sync"
 )
@@ -17,13 +18,10 @@ type shortenRequest struct {
 	URL string `json:"url"`
 }
 
-func generateBase32(length int) string {
-	var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
-	code := make([]byte, length)
-	for i := range code {
-		code[i] = chars[rand.Intn(len(chars))]
-	}
-	return string(code)
+func generateCode(url string) string {
+	hash := sha256.Sum256([]byte(url))
+	encoded := base32.StdEncoding.EncodeToString(hash[:5])
+	return encoded
 }
 
 func (s *Store) shortenHandler(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +37,7 @@ func (s *Store) shortenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	code := generateBase32(6)
+	code := generateCode(req.URL)
 
 	s.mu.Lock()
 	s.urls[code] = req.URL
